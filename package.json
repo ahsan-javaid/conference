@@ -1,0 +1,19 @@
+{
+  "name": "virtual-direct",
+  "version": "0.1.0",
+  "description": "virtual-direct",
+  "main": "index.js",
+  "license": "ISC",
+  "scripts": {
+    "build": "webpack -p",
+    "start": "pm2 start config/pm2.json",
+    "server-start": "node server.js | bunyan --output short --color",
+    "client-start": "npm start --prefix angular-app",
+    "dev-start": "concurrently --kill-others \"npm run server-start\" \"npm run client-start\""
+  },
+  "dependencies": {
+    "express": "^4.15.3",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {}
+}
