@@ -1,195 +1,54 @@
-#### [WebRTC](https://www.webrtc-experiment.com/) Group [video sharing](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/video-conferencing) / [Demo](https://www.webrtc-experiment.com/video-conferencing/)
+WebRTC Example
+==============
 
-=
+#### shane tully (shanetully.com)
 
-1. This [WebRTC](https://www.webrtc-experiment.com/) experiment is aimed to transmit audio/video streams in many-to-many style.
-2. It setups multiple peer connections to support multi-user connectivity feature. Remember, [WebRTC](https://www.webrtc-experiment.com/) doesn't supports 3-way handshake!
-3. Out of multi-peers establishment; many RTP-ports are opened according to number of media streams referenced to each peer connection.
-4. Multi-ports establishment will cause huge [CPU and bandwidth usage](https://www.webrtc-experiment.com/docs/RTP-usage.html)!
+An 'as simple as it gets' WebRTC example.
 
-=
+See [https://shanetully.com/2014/09/a-dead-simple-webrtc-example/](https://shanetully.com/2014/09/a-dead-simple-webrtc-example/) for a detailed walkthrough of the code.
 
-1. Mesh networking model is implemented to open multiple interconnected peer connections.
-2. Maximum peer connections limit is 256 (on chrome). It means that 256 users can be interconnected!
+Note: This repo is kept updated. The general ideas are there, but the above blog post may be somewhat out of date with the code in this repo.
 
-=
+## Usage
 
-#### Want to use video-conferencing in your own webpage?
+The signaling server uses Node.js and `ws` and can be started as such:
 
-```html
-<script src="//cdn.webrtc-experiment.com/socket.io.js"> </script>
-<script src="//cdn.webrtc-experiment.com/RTCPeerConnection-v1.5.js"> </script>
-<script src="//cdn.webrtc-experiment.com/video-conferencing/conference.js"> </script>
-
-<button id="setup-new-room">Setup New Conference</button>
-<table style="width: 100%;" id="rooms-list"></table>
-<div id="videos-container"></div>
-
-<script>
-var config = {
-    openSocket: function (config) {
-        var SIGNALING_SERVER = 'https://webrtcweb.com:9559/',
-            defaultChannel = location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
-
-        var channel = config.channel || defaultChannel;
-        var sender = Math.round(Math.random() * 999999999) + 999999999;
-
-        io.connect(SIGNALING_SERVER).emit('new-channel', {
-            channel: channel,
-            sender: sender
-        });
-
-        var socket = io.connect(SIGNALING_SERVER + channel);
-        socket.channel = channel;
-        socket.on('connect', function () {
-            if (config.callback) config.callback(socket);
-        });
-
-        socket.send = function (message) {
-            socket.emit('message', {
-                sender: sender,
-                data: message
-            });
-        };
-
-        socket.on('message', config.onmessage);
-    },
-    onRemoteStream: function (media) {
-        var video = media.video;
-        video.setAttribute('controls', true);
-        video.setAttribute('id', media.stream.id);
-        videosContainer.insertBefore(video, videosContainer.firstChild);
-        video.play();
-    },
-    onRemoteStreamEnded: function (stream) {
-        var video = document.getElementById(stream.id);
-        if (video) video.parentNode.removeChild(video);
-    },
-    onRoomFound: function (room) {
-        var alreadyExist = document.querySelector('button[data-broadcaster="' + room.broadcaster + '"]');
-        if (alreadyExist) return;
-
-        var tr = document.createElement('tr');
-        tr.innerHTML = '<td><strong>' + room.roomName + '</strong> shared a conferencing room with you!</td>' +
-            '<td><button class="join">Join</button></td>';
-        roomsList.insertBefore(tr, roomsList.firstChild);
-
-        var joinRoomButton = tr.querySelector('.join');
-        joinRoomButton.setAttribute('data-broadcaster', room.broadcaster);
-        joinRoomButton.setAttribute('data-roomToken', room.broadcaster);
-        joinRoomButton.onclick = function () {
-            this.disabled = true;
-
-            var broadcaster = this.getAttribute('data-broadcaster');
-            var roomToken = this.getAttribute('data-roomToken');
-            captureUserMedia(function () {
-                conferenceUI.joinRoom({
-                    roomToken: roomToken,
-                    joinUser: broadcaster
-                });
-            });
-        };
-    }
-};
-
-var conferenceUI = conference(config);
-var videosContainer = document.getElementById('videos-container') || document.body;
-var roomsList = document.getElementById('rooms-list');
-
-document.getElementById('setup-new-room').onclick = function () {
-    this.disabled = true;
-    captureUserMedia(function () {
-        conferenceUI.createRoom({
-            roomName: 'Anonymous'
-        });
-    });
-};
-
-function captureUserMedia(callback) {
-    var video = document.createElement('video');
-    video.setAttribute('autoplay', true);
-    video.setAttribute('controls', true);
-    videosContainer.insertBefore(video, videosContainer.firstChild);
-
-    getUserMedia({
-        video: video,
-        onsuccess: function (stream) {
-            config.attachStream = stream;
-            video.setAttribute('muted', true);
-            callback();
-        }
-    });
-}
-</script>
+```
+$ npm install ws
+$ node server/server.js
 ```
 
-=
+With the server running, open a recent version of Firefox or Chrome and visit `https://localhost:8443`. Note the HTTPS! There is no redirect from HTTP to HTTPS!
 
-For signaling; please check following page:
+## TLS
 
-https://github.com/muaz-khan/WebRTC-Experiment/blob/master/Signaling.md
+Recent versions of Chrome require secure websockets for WebRTC. Thus, this example utilizes HTTPS. Included is a self-signed certificate that must be accepted in the browser for the example to work.
 
-Remember, you can use any signaling implementation exists out there without modifying any single line! Just skip below code and open [above link](https://github.com/muaz-khan/WebRTC-Experiment/blob/master/Signaling.md)!
+## Problems?
 
-=
+WebRTC is a rapidly evolving beast. Being an example that I don't check often, I rely on users for reports if something breaks. Issues and pull requests are greatly appreciated.
 
-#### Want to use [Firebase](https://www.firebase.com/) for signaling?
+## License
 
-```javascript
-var config = {
-    openSocket: function (config) {
-        var channel = config.channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
-        var socket = new Firebase('https://chat.firebaseIO.com/' + channel);
-        socket.channel = channel;
-        socket.on('child_added', function (data) {
-            config.onmessage(data.val());
-        });
-        socket.send = function (data) {
-            this.push(data);
-        }
-        config.onopen && setTimeout(config.onopen, 1);
-        socket.onDisconnect().remove();
-        return socket;
-    }
-}
-```
+The MIT License (MIT)
 
-=
+Copyright (c) 2014 Shane Tully
 
-#### Want to use [PubNub](http://www.pubnub.com/) for signaling?
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-```javascript
-var config = {
-    openSocket: function (config) {
-        var channel = config.channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
-        var socket = io.connect('https://pubsub.pubnub.com/' + channel, {
-            publish_key: 'demo',
-            subscribe_key: 'demo',
-            channel: config.channel || channel,
-            ssl: true
-        });
-        if (config.onopen) socket.on('connect', config.onopen);
-        socket.on('message', config.onmessage);
-        return socket;
-    }
-}
-```
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-=
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
-#### Browser Support
-
-This [WebRTC Video Conferencing](https://www.webrtc-experiment.com/video-conferencing/) experiment works fine on following web-browsers:
-
-| Browser        | Support           |
-| ------------- |-------------|
-| Firefox | [Stable](http://www.mozilla.org/en-US/firefox/new/) / [Aurora](http://www.mozilla.org/en-US/firefox/aurora/) / [Nightly](http://nightly.mozilla.org/) |
-| Google Chrome | [Stable](https://www.google.com/intl/en_uk/chrome/browser/) / [Canary](https://www.google.com/intl/en/chrome/browser/canary.html) / [Beta](https://www.google.com/intl/en/chrome/browser/beta.html) / [Dev](https://www.google.com/intl/en/chrome/browser/index.html?extra=devchannel#eula) |
-| Opera | [Stable](http://www.opera.com/) / [NEXT](http://www.opera.com/computer/next)  |
-| Android | [Chrome](https://play.google.com/store/apps/details?id=com.chrome.beta&hl=en) / [Firefox](https://play.google.com/store/apps/details?id=org.mozilla.firefox) / [Opera](https://play.google.com/store/apps/details?id=com.opera.browser) |
-
-=
-
-#### License
-
-[WebRTC Video Conferencing](https://github.com/muaz-khan/WebRTC-Experiment/tree/master/video-conferencing) is released under [MIT licence](https://www.webrtc-experiment.com/licence/) . Copyright (c) [Muaz Khan](https://plus.google.com/+MuazKhan).
